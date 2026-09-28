@@ -21,10 +21,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
 
+      - uses: astral-sh/setup-uv@v3
+
+      # Combining every provider extra (openai, anthropic, google-cloud-aiplatform,
+      # boto3, cohere, mistralai, mcp, presidio, spacy) in one install is too large
+      # a graph for pip's resolver ("Dependency resolution exceeded maximum depth");
+      # uv's resolver handles the same graph in seconds.
       - name: Install with every provider + dev extras
-        run: pip install -e ".[all,dev]"
+        run: uv pip install --system -e ".[all,dev]"
 
       - name: Run tests
         run: pytest --tb=short -q
@@ -32,7 +37,7 @@ jobs:
       - name: Run tests with coverage (Python 3.11 only, for the badge)
         if: matrix.python-version == '3.11'
         run: |
-          pip install pytest-cov
+          uv pip install --system pytest-cov
           pytest --cov=savi --cov-report=xml --cov-report=term -q
 
       - name: Upload coverage to Codecov
