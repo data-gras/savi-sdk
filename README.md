@@ -114,6 +114,20 @@ codebase that streams or uses an agent framework.
 
 ---
 
+## How this compares
+
+Most LLM observability tools take one of two shapes: a proxy you route
+calls through by swapping your base URL (Helicone, Portkey), or a server
+you deploy and point your app at (Langfuse runs on Postgres, ClickHouse,
+Redis, and S3; Phoenix ships as a Docker container). savi-sdk is neither.
+It's a Python import that wraps your existing client in-process; your call
+still goes straight to the provider, nothing sits in the request path, and
+nothing gets deployed, not even for [Local Mode](#local-mode)'s zero-account
+path. A real SAVI account changes where the telemetry goes (SAVI's backend
+instead of your terminal), not how the SDK runs.
+
+---
+
 ## Supported providers
 
 | Provider | Class | Method |
