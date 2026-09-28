@@ -1,5 +1,11 @@
 # savi-sdk
 
+[![Tests](https://github.com/data-gras/savi-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/data-gras/savi-sdk/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/data-gras/savi-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/data-gras/savi-sdk)
+[![PyPI version](https://img.shields.io/pypi/v/savi-sdk.svg)](https://pypi.org/project/savi-sdk/)
+[![Python versions](https://img.shields.io/pypi/pyversions/savi-sdk.svg)](https://pypi.org/project/savi-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Lightweight observability SDK for LLM costs, carbon, and compliance.
 Drop one wrapper around your LLM calls. SAVI captures spend, tokens, latency,
 PII flags, and carbon automatically, with zero changes to your prompts or model logic.
