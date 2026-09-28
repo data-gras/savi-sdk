@@ -15,6 +15,9 @@ PII flags, and carbon automatically, with zero changes to your prompts or model 
 > your `SAVI_KEY`, or skip signup entirely with [Local Mode](#local-mode),
 > which runs with zero account and zero network calls.
 
+Runnable examples, from "needs nothing" to "needs a provider key", live in
+[`examples/`](examples/).
+
 ---
 
 ## Install
