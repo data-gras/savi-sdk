@@ -133,9 +133,12 @@ class _CompletionsProxy:
         t0         = time.monotonic()
         response   = self._inner.chat.completions.create(model=model, messages=messages, **kwargs)
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/finish_reason up front
-            # the way a full ChatCompletion does, so there's nothing to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            from savi import streaming
+            return streaming.track_stream(
+                response, provider="azure", model=model, emit=self._emit, tenant=self._tenant, team=self._team,
+                fp=fp, pii_flagged=pii_flagged, pii_types=pii_types, workload_type=self._workload_type,
+                is_async=False, observe=streaming.observe_openai)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:
@@ -291,9 +294,12 @@ class _AsyncCompletionsProxy:
         t0         = time.monotonic()
         response   = await self._inner.chat.completions.create(model=model, messages=messages, **kwargs)
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/finish_reason up front
-            # the way a full ChatCompletion does, so there's nothing to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            from savi import streaming
+            return streaming.track_stream(
+                response, provider="azure", model=model, emit=self._emit, tenant=self._tenant, team=self._team,
+                fp=fp, pii_flagged=pii_flagged, pii_types=pii_types, workload_type=self._workload_type,
+                is_async=True, observe=streaming.observe_openai)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:

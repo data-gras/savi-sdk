@@ -150,9 +150,27 @@ class SaviBedrockRuntime:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._collector.emit(self._build_payload(model_id, response, latency_ms, fp, pii_flagged, pii_types))
+            self._collector.emit(self._build_payload(
+                        model_id, response, latency_ms, fp, pii_flagged, pii_types))
         except Exception:
             _log.debug("savi.bedrock: emit failed", exc_info=True)
+        return response
+
+    def converse_stream(self, model_id: str, messages: list, **kwargs) -> dict:
+        """Wrap bedrock-runtime converse_stream(). Returns the provider's own response dict with its `stream` entry
+        replaced by a wrapper that yields the same events and emits one metadata-only event when the stream ends,
+        fails or is closed (savi/streaming.py). Streamed text is never captured. The response cache does not apply."""
+        fp, pii_flagged, pii_types = self._fingerprint_and_mask(model_id, messages, **kwargs)
+        response = self._client.converse_stream(modelId=model_id, messages=messages, **kwargs)
+        try:
+            from savi import streaming
+            response = dict(response)
+            response["stream"] = streaming.track_stream(
+                response["stream"], provider="bedrock", model=model_id, emit=self._collector.emit,
+                tenant=self._tenant, team=self._team, fp=fp, pii_flagged=pii_flagged, pii_types=pii_types,
+                workload_type=self._workload_type, is_async=False, observe=streaming.observe_bedrock)
+        except Exception:
+            _log.debug("savi.bedrock: could not wrap the stream", exc_info=True)
         return response
 
     async def converse_async(self, model_id: str, messages: list, **kwargs) -> dict:
@@ -185,7 +203,8 @@ class SaviBedrockRuntime:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._collector.emit(self._build_payload(model_id, response, latency_ms, fp, pii_flagged, pii_types))
+            self._collector.emit(self._build_payload(
+                        model_id, response, latency_ms, fp, pii_flagged, pii_types))
         except Exception:
             _log.debug("savi.bedrock: emit failed", exc_info=True)
         return response
