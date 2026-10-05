@@ -261,13 +261,9 @@ response = client.chat.completions.create(
 SAVI captures: tokens in/out, cost (USD + AUD), latency, model, carbon, LSH fingerprint.
 Nothing changes in the API call; your app code is identical either way.
 
-**Streaming (`stream=True`) is not instrumented by any wrapper today.** The
-call itself still works exactly as it would with the plain provider client,
-your code gets the real stream object back, nothing raises, but SAVI's
-telemetry (cost, tokens, PII flags, fingerprint) and the opt-in response
-cache both silently skip that call, since neither can be computed from a
-stream object the way they can from a full response. If your workload
-streams, you currently won't see it in SAVI at all.
+**Streaming (`stream=True`)** is reported for the OpenAI, Anthropic, Azure OpenAI, Mistral and Cohere wrappers (sync and async), Google Vertex (`generate_content(..., stream=True)`, sync) and Bedrock (`converse_stream`, sync). Your code gets a thin wrapper around the real stream: same chunks, same errors, and you can end it early with `.close()` or a `with` block. SAVI records one event when the stream ends, fails, or is closed early. The event has the model, token counts, finish reason and response time. It never has the text of a streamed reply.
+
+OpenAI only reports token usage in a stream if you pass `stream_options={"include_usage": True}`. Without it `tokens_in` is 0 and `tokens_out` counts the chunks that carried text, so cost is understated. A stream that is dropped without being finished or closed records nothing. The opt-in response cache skips streamed calls.
 
 LangChain, LlamaIndex, CrewAI, and gateway/router setups (LiteLLM, an
 internal proxy) are not officially tested or supported. For LangChain
@@ -477,7 +473,7 @@ Config: `cache_ttl_seconds` (default `300`), `cache_max_size` (default `1000`,
 oldest entries evicted first once full). Not available on the
 [auto-instrumentation](#auto-instrumentation-for-multi-agent-hand-offs) path;
 use `SaviOpenAI`/`SaviAnthropic`/etc. directly to use it. Also skipped for any
-call with `stream=True` (see the streaming note in Quick Start above).
+call with `stream=True` (see the streaming note above).
 
 ---
 

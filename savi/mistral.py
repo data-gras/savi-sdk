@@ -113,10 +113,12 @@ class _ChatProxy:
         t0         = time.monotonic()
         response   = self._inner.chat.complete(model=model, messages=messages, **kwargs)
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/finish_reason up front
-            # the way a full ChatCompletionResponse does, so there's nothing
-            # to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            from savi import streaming
+            return streaming.track_stream(
+                response, provider="mistral", model=model, emit=self._emit, tenant=self._tenant, team=self._team,
+                fp=fp, pii_flagged=pii_flagged, pii_types=pii_types, workload_type=self._workload_type,
+                is_async=False, observe=streaming.observe_mistral)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:
@@ -124,7 +126,7 @@ class _ChatProxy:
 
         try:
             self._emit(_build_payload(
-                self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
+                        self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
         except Exception:
@@ -154,10 +156,12 @@ class _ChatProxy:
         t0         = time.monotonic()
         response   = await self._inner.chat.complete_async(model=model, messages=messages, **kwargs)
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/finish_reason up front
-            # the way a full ChatCompletionResponse does, so there's nothing
-            # to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            from savi import streaming
+            return streaming.track_stream(
+                response, provider="mistral", model=model, emit=self._emit, tenant=self._tenant, team=self._team,
+                fp=fp, pii_flagged=pii_flagged, pii_types=pii_types, workload_type=self._workload_type,
+                is_async=True, observe=streaming.observe_mistral)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:
@@ -167,7 +171,7 @@ class _ChatProxy:
         # directly here rather than awaited.
         try:
             self._emit(_build_payload(
-                self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
+                        self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
         except Exception:
