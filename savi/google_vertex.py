@@ -81,9 +81,10 @@ class SaviVertexAI:
     def GenerativeModel(self, model_name: str) -> "_WrappedModel":
         import vertexai.generative_models as _vg
         inner = _vg.GenerativeModel(model_name=model_name)
-        return _WrappedModel(inner, model_name, self._collector.emit,
-                             self._tenant_id, self._team_id, self._masker,
-                             self._workload_type, self._cache)
+        wrapped = _WrappedModel(inner, model_name, self._collector.emit,
+                                self._tenant_id, self._team_id, self._masker,
+                                self._workload_type, self._cache)
+        return wrapped
 
 
 class _WrappedModel:
@@ -125,9 +126,12 @@ class _WrappedModel:
         t0         = time.monotonic()
         response   = self._inner.generate_content(contents, **kwargs)
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage_metadata up front the
-            # way a full GenerationResponse does, so there's nothing to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            from savi import streaming
+            return streaming.track_stream(
+                response, provider="google", model=self._model_name, emit=self._emit, tenant=self._tenant,
+                team=self._team, fp=fp, pii_flagged=pii_flagged, pii_types=pii_types,
+                workload_type=self._workload_type, is_async=False, observe=streaming.observe_vertex)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:
