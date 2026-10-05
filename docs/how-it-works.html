@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the SAVI SDK works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+:root{--head:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+h1,h2,h3,header b,.tile .n{font-family:var(--head);letter-spacing:0}
+code,pre{font-family:var(--mono)}
+
+:root{--ink:#14213D;--mute:#5B6478;--bg:#F5F7FB;--card:#fff;--line:#DDE2EC;--navy:#0B1B3A;--peach:#F4A261;--ok:#157A4B;--okbg:#E4F4EB;--bad:#B3261E;--badbg:#FCE6E4;--info:#1F5FBF;--infobg:#E3EDFB;--code:#0B1B3A}
+@media(prefers-color-scheme:dark){:root{--ink:#E8ECF5;--mute:#A3ACC0;--bg:#0E1424;--card:#172038;--line:#2A3552;--okbg:#12351F;--badbg:#3E1A18;--infobg:#14284A;--ok:#6FD39B;--bad:#FF8B84;--info:#8DB8FF;--code:#080D1A}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;gap:12px;align-items:baseline}
+header b{font-size:18px}header span{opacity:.75;font-size:14px}
+main{max-width:860px;margin:0 auto;padding:28px 20px 56px}
+h1{font-size:clamp(24px,4vw,32px);line-height:1.25;margin:0 0 8px}
+h2{font-size:20px;margin:44px 0 6px}
+.lead{color:var(--mute);margin:0;max-width:62ch}
+.sub{color:var(--mute);margin:0 0 16px;max-width:62ch;font-size:15px}
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:600;background:var(--infobg);color:var(--info);margin-top:14px}
+ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+ol.steps>li{counter-increment:s;position:relative;padding:0 0 28px 56px}
+ol.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;display:grid;place-items:center}
+ol.steps>li::after{content:"";position:absolute;left:17px;top:42px;bottom:6px;width:2px;background:var(--line)}
+ol.steps>li:last-child::after{display:none}
+.steps h3{margin:4px 0 2px;font-size:18px}
+.steps p{margin:0 0 8px;color:var(--mute)}
+.code{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:var(--code);color:#E8ECF5;border-radius:8px;padding:12px 14px;margin:8px 0;max-width:100%}
+.code pre{margin:0;overflow-x:auto;font:14px/1.5 var(--mono);white-space:pre}
+button.copy{flex:none;background:transparent;color:#E8ECF5;border:1px solid #4A5878;border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+button.copy:hover{background:#26325A}
+.expect{font-size:14px;background:var(--okbg);color:var(--ok);padding:6px 10px;border-radius:6px;display:inline-block;margin-top:2px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.mode{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:20px}
+.mode.local{background:var(--navy);color:#fff;border-color:var(--navy)}
+.mode h3{margin:6px 0 10px;font-size:19px}
+.mode ul{margin:0 0 14px;padding-left:20px}
+.mode li{margin-bottom:4px}
+.badge{font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--peach);color:#3A2200}
+.mode:not(.local) .badge{background:var(--infobg);color:var(--info)}
+.mode a{display:inline-block;background:var(--navy);color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border:0}
+th{background:var(--infobg);color:var(--info);font-size:14px}
+.yes{color:var(--ok);font-weight:700}.no{color:var(--bad);font-weight:700}
+.safe{background:var(--okbg);color:var(--ok);border-radius:8px;padding:14px 16px;font-weight:600;margin:0 0 14px}
+.addon{border:1px dashed var(--line);border-radius:8px;padding:14px 16px;background:var(--card)}
+.addon p{margin:0 0 6px}
+details{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:8px}
+summary{cursor:pointer;font-weight:600}
+details p{margin:8px 0 0;color:var(--mute)}
+:focus-visible{outline:3px solid var(--info);outline-offset:2px}
+@media(max-width:520px){ol.steps>li{padding-left:48px}}
+</style>
+</head>
+<body>
+<header><b>SAVI</b><span>How the SDK works</span></header>
+<main>
+<h1>Go from install to a report you can send in 5 steps</h1>
+<p class="lead">SAVI watches the AI calls your code makes and shows you what they cost, which ones failed and where personal data went. You do not need a SAVI account or server to start.</p>
+<span class="tag">About 5 minutes · Python</span>
+
+<h2>The 5 steps</h2>
+<p class="sub">Do these in order. Each step shows what you should see when it works.</p>
+<ol class="steps">
+  <li><h3>Install</h3><p>Install the package. It is the only thing you need.</p>
+    <div class="code"><pre>pip install "savi-sdk[openai]"</pre><button class="copy" type="button">Copy</button></div>
+    <span class="expect">You should see: pip finishes with no errors.</span></li>
+  <li><h3>Wrap your client</h3><p>Swap your AI client for the SAVI one, and switch on the report. It replaces one line in your code and adds two.</p>
+    <div class="code"><pre>import os
+from savi import SaviOpenAI, local_report
+
+local_report.start()
+client = SaviOpenAI(api_key=os.environ["OPENAI_API_KEY"], local_mode=True)</pre><button class="copy" type="button">Copy</button></div>
+    <span class="expect">You should see: your app starts as normal.</span></li>
+  <li><h3>Call as usual</h3><p>Change nothing else. Your calls go straight to your AI provider.</p>
+    <span class="expect">You should see: the same answers as before.</span></li>
+  <li><h3>SAVI takes notes</h3><p>For every call, SAVI writes down the model, tokens, time, failures, repeats and cost (from the prices you enter). Streamed answers are counted too.</p>
+    <span class="expect">You should see: one short line printed for each call.</span></li>
+  <li><h3>Read your report</h3><p>When your program ends you get a short summary and a file called <code>savi-report.html</code>. Open it in any browser, or send it to anyone.</p>
+    <span class="expect">You should see: a page like the sample report.</span></li>
+</ol>
+
+<h2>Try it before you use it</h2>
+<p class="sub">Want to see a report first? This command makes one from made-up calls.</p>
+<div class="code"><pre>python -m savi.local_report --demo</pre><button class="copy" type="button">Copy</button></div>
+
+<h2>Your data stays private</h2>
+<p class="sub">Here is exactly what SAVI keeps and what it does not.</p>
+<table>
+  <tr><th>What</th><th>Recorded?</th></tr>
+  <tr><td>Your question (the prompt)</td><td class="yes">Never, by default</td></tr>
+  <tr><td>The model's answer</td><td class="yes">Never, by default</td></tr>
+  <tr><td>Model name, tokens, time, failures, repeats</td><td class="yes">Yes</td></tr>
+  <tr><td>Cost, from prices you enter</td><td class="yes">Yes</td></tr>
+</table>
+<div class="addon" style="margin-top:14px"><p><b>Optional add-on: personal-data flags.</b> It marks calls that include things like names or emails. It still does not save the text.</p>
+<div class="code"><pre>pip install "savi-sdk[pii]"</pre><button class="copy" type="button">Copy</button></div></div>
+
+<h2>Choose where the notes go</h2>
+<p class="sub">You can change this later without changing your code much.</p>
+<div class="two">
+  <div class="mode local"><span class="badge">Start here</span><h3>Local mode: everything stays on this computer</h3>
+    <ul><li>No account and no server</li><li>Nothing is sent anywhere</li><li>Add your own prices to see cost</li><li>Send the report file to anyone</li></ul></div>
+  <div class="mode"><span class="badge">For your company</span><h3>Connected mode: notes go to your SAVI account</h3>
+    <ul><li>Same code, plus a key and a tenant id</li><li>Notes are sent in batches in the background</li><li>SAVI sets it up with you</li></ul>
+    <a href="https://datagras.com/savi/contact?utm_source=github&amp;utm_medium=readme&amp;utm_campaign=sdk-readme">Contact SAVI</a></div>
+</div>
+
+<h2>Common questions</h2>
+<details><summary>Do I need to change my code?</summary><p>You change the line where you create the client, and add two lines to switch on the report. The rest stays the same.</p></details>
+<details><summary>Will it slow my app down?</summary><p>Your calls go straight to your provider. SAVI runs inside your program and is not in the network path. In connected mode, notes are sent in batches in the background.</p></details>
+<details><summary>Where is my report saved?</summary><p>In a file named <code>savi-report.html</code>. Check the folder you ran your code from.</p></details>
+</main>
+<script>
+document.querySelectorAll("button.copy").forEach(function(b){
+  b.addEventListener("click",function(){
+    var t=b.parentNode.querySelector("pre").textContent;
+    try{navigator.clipboard.writeText(t).then(function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1500)})}catch(e){b.textContent="Select and copy"}
+  });
+});
+</script>
+</body>
+</html>

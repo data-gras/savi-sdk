@@ -122,9 +122,9 @@ class _MessagesProxy:
             model=model, messages=messages, max_tokens=max_tokens, **kwargs
         )
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/stop_reason up front
-            # the way a full Message does, so there's nothing to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            return _track_stream(response, False, model, self._emit, self._tenant, self._team, fp,
+                                 pii_flagged, pii_types, self._workload_type)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:
@@ -138,6 +138,18 @@ class _MessagesProxy:
         except Exception:
             _log.debug("savi.anthropic: emit failed", exc_info=True)
         return response
+
+
+def _track_stream(stream, is_async, model, emit, tenant, team, fp, pii_flagged, pii_types, workload_type):
+    from savi import streaming
+    state = streaming.StreamState("anthropic", model)
+
+    def make(state, *, latency_ms, outcome, exc):
+        return streaming.build_payload(state, tenant_id=tenant, team_id=team, latency_ms=latency_ms, fingerprint=fp,
+                                       pii_flagged=pii_flagged, pii_types=pii_types, workload_type=workload_type,
+                                       outcome=outcome, exc=exc)
+    return streaming.track(stream, is_async=is_async, state=state, observe=streaming.observe_anthropic,
+                           emit=emit, make_payload=make)
 
 
 def _mask(masker, messages: list):
@@ -299,9 +311,9 @@ class _AsyncMessagesProxy:
             model=model, messages=messages, max_tokens=max_tokens, **kwargs
         )
         if kwargs.get("stream"):
-            # A streamed response doesn't carry usage/stop_reason up front
-            # the way a full Message does, so there's nothing to emit yet.
-            return response
+            # One event when the stream ends, fails or is closed (savi/streaming.py).
+            return _track_stream(response, True, model, self._emit, self._tenant, self._team, fp,
+                                 pii_flagged, pii_types, self._workload_type)
         latency_ms = int((time.monotonic() - t0) * 1000)
 
         if cacheable:

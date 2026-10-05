@@ -14,6 +14,14 @@ PII flags, and carbon automatically, with zero changes to your prompts or model 
 > You do not need an account to start: [Local Mode](#start-here-try-it-from-zero) runs on your own computer
 > and sends nothing out. To use SAVI across your company, [book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
 
+> [!TIP]
+> **New here? Start with the two-page overview.**
+>
+> - **[How the SDK works](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/how-it-works.html)**: five steps from install to a report you can send.
+> - **[See a sample report](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)**: what you get at the end.
+>
+> Both open in your browser. To keep a copy, download them from the [`docs`](docs/) folder.
+
 Runnable examples, from "needs nothing" to "needs a provider key", live in
 [`examples/`](examples/).
 
@@ -26,6 +34,7 @@ This part assumes you know nothing. You do not need a SAVI account or a SAVI ser
 This guide needs savi-sdk 0.16 or newer. After step 4, check with `pip show savi-sdk`.
 
 No key yet? Jump to [Try it without a key](#try-it-without-a-key).
+
 
 ### 1. Install Python
 
@@ -125,11 +134,9 @@ You may also see a line that starts with "PII masking is on by default but Presi
 
 How to read a line: the status (`OK`, `CACHE` when the answer came from your own cache, `FAIL`), the provider and model, tokens in and out, how long the call took, and the cost. A `~` before a cost means it is an estimate from the prices you entered. Any labels (workflow, agent, user) come last.
 
-Now open `savi-report.html` in your browser (double-click it). It is one file with everything inside. The top of the sample report looks like this ([open the full sample](https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)):
+Now open `savi-report.html` in your browser (double-click it). It is one file with everything inside. [See a sample report](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html) before you run anything.
 
-![The top of a SAVI local report: a headline, six totals, cost by model, and what SAVI noticed](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/sample-report.png)
-
-The full report also lists every call, the prices it used, and a box that explains what local mode cannot show.
+The full report also lists every call and the prices it used.
 
 ### 8. Add your own prices
 
@@ -261,13 +268,9 @@ response = client.chat.completions.create(
 SAVI captures: tokens in/out, cost (USD + AUD), latency, model, carbon, LSH fingerprint.
 Nothing changes in the API call; your app code is identical either way.
 
-**Streaming (`stream=True`) is not instrumented by any wrapper today.** The
-call itself still works exactly as it would with the plain provider client,
-your code gets the real stream object back, nothing raises, but SAVI's
-telemetry (cost, tokens, PII flags, fingerprint) and the opt-in response
-cache both silently skip that call, since neither can be computed from a
-stream object the way they can from a full response. If your workload
-streams, you currently won't see it in SAVI at all.
+**Streaming (`stream=True`)** is reported for the OpenAI, Anthropic, Azure OpenAI, Mistral and Cohere wrappers (sync and async), Google Vertex (`generate_content(..., stream=True)`, sync) and Bedrock (`converse_stream`, sync). Your code gets a thin wrapper around the real stream: same chunks, same errors, and you can end it early with `.close()` or a `with` block. SAVI records one event when the stream ends, fails, or is closed early. The event has the model, token counts, finish reason and response time. It never has the text of a streamed reply.
+
+OpenAI only reports token usage in a stream if you pass `stream_options={"include_usage": True}`. Without it `tokens_in` is 0 and `tokens_out` counts the chunks that carried text, so cost is understated. A stream that is dropped without being finished or closed records nothing. The opt-in response cache skips streamed calls.
 
 LangChain, LlamaIndex, CrewAI, and gateway/router setups (LiteLLM, an
 internal proxy) are not officially tested or supported. For LangChain
@@ -477,7 +480,7 @@ Config: `cache_ttl_seconds` (default `300`), `cache_max_size` (default `1000`,
 oldest entries evicted first once full). Not available on the
 [auto-instrumentation](#auto-instrumentation-for-multi-agent-hand-offs) path;
 use `SaviOpenAI`/`SaviAnthropic`/etc. directly to use it. Also skipped for any
-call with `stream=True` (see the streaming note in Quick Start above).
+call with `stream=True` (see the streaming note above).
 
 ---
 
