@@ -5,7 +5,7 @@ long_description = (Path(__file__).parent / "README.md").read_text(encoding="utf
 
 setup(
     name="savi-sdk",
-    version="0.15.1",
+    version="0.16.0",
     description="Lightweight observability SDK for LLM costs, carbon, and compliance",
     long_description=long_description,
     long_description_content_type="text/markdown",
