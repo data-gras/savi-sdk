@@ -14,6 +14,14 @@ PII flags, and carbon automatically, with zero changes to your prompts or model 
 > You do not need an account to start: [Local Mode](#start-here-try-it-from-zero) runs on your own computer
 > and sends nothing out. To use SAVI across your company, [book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
 
+> [!TIP]
+> **New here? Start with the two-page overview.**
+>
+> - **[How the SDK works](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/how-it-works.html)**: five steps from install to a report you can send.
+> - **[See a sample report](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)**: what you get at the end.
+>
+> Both open in your browser. To keep a copy, download them from the [`docs`](docs/) folder.
+
 Runnable examples, from "needs nothing" to "needs a provider key", live in
 [`examples/`](examples/).
 
@@ -27,7 +35,6 @@ This guide needs savi-sdk 0.16 or newer. After step 4, check with `pip show savi
 
 No key yet? Jump to [Try it without a key](#try-it-without-a-key).
 
-![How savi-sdk works: install, wrap your client, call as usual, SAVI notes each call, read the results. Local mode keeps everything on your computer; connected mode sends the same notes to your SAVI account.](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/how-it-works.png)
 
 ### 1. Install Python
 
@@ -127,11 +134,9 @@ You may also see a line that starts with "PII masking is on by default but Presi
 
 How to read a line: the status (`OK`, `CACHE` when the answer came from your own cache, `FAIL`), the provider and model, tokens in and out, how long the call took, and the cost. A `~` before a cost means it is an estimate from the prices you entered. Any labels (workflow, agent, user) come last.
 
-Now open `savi-report.html` in your browser (double-click it). It is one file with everything inside. The top of the sample report looks like this ([open the full sample](https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)):
+Now open `savi-report.html` in your browser (double-click it). It is one file with everything inside. [See a sample report](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html) before you run anything.
 
-![The top of a SAVI local report: a headline, six totals, cost by model, and what SAVI noticed](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/sample-report.png)
-
-The full report also lists every call, the prices it used, and a box that explains what local mode cannot show.
+The full report also lists every call and the prices it used.
 
 ### 8. Add your own prices
 
