@@ -1,0 +1,15 @@
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   214  out    96    812 ms  cost ~$0.000090  workflow=support-inbox agent=triage
+  [ OK  ] openai     gpt-4o-2024-08-06            in  1840  out   402     2.3 s  cost ~$0.0086  workflow=support-inbox agent=drafter
+  [ OK  ] anthropic  claude-haiku-4-5-20251001    in   620  out   140    940 ms  cost ~$0.0013  workflow=kyc-review agent=extractor
+  [CACHE] openai     gpt-4o-mini-2024-07-18       in   214  out    96     14 ms  cost $0.00 (saved ~$0.000090)  answered from cache  workflow=support-inbox agent=triage
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   330  out    60    701 ms  cost ~$0.000085  personal data: EMAIL_ADDRESS x1, PERSON x1  workflow=support-inbox user=priya
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   214  out    96    790 ms  cost ~$0.000090  workflow=support-inbox agent=triage
+  [ OK  ] mistral    mistral-small-latest         in   410  out    88     1.1 s  cost no price
+  [FAIL ] openai     gpt-4o                       in     0  out     0    30.2 s  cost -  failed timeout  workflow=support-inbox agent=drafter
+
+  Summary  (this computer only; nothing was sent anywhere)
+    8 calls, 1 failed   tokens in 3,842 / out 978   average response 1.1 s
+    cost about $0.01. Cost covers 6 of 7 calls. No price for: mistral-small-latest.
+    1 answered from the cache, saving about $0.000090
+    personal data found in 1 call: EMAIL_ADDRESS x1, PERSON x1
+    Costs marked ~ use the prices you entered. They are estimates, not a bill.
