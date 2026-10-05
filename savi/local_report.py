@@ -19,6 +19,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from savi import local
 from savi._brand import LOGO_PNG_BASE64
+from savi._fonts import FONT_FACE_CSS
 
 CONTACT_URL = "https://datagras.com/savi/contact?utm_source=sdk&utm_medium=report&utm_campaign=local-report"
 
@@ -230,7 +231,8 @@ _CSS = """
 @media (prefers-color-scheme:dark){:root{--bg:#0E1116;--card:#171C24;--ink:#EDEFF2;--mute:#A0A8B3;--line:#2A313C;--peachdk:#FFC699;
 --ok:#6CE9A6;--okbg:#11301F;--err:#FDA29B;--errbg:#3B1612;--warn:#FEC84B;--warnbg:#3A2A0C;--info:#84ADFF;--infobg:#162447}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,.bar b,.card b,.cta h2{font-family:"Plus Jakarta Sans",Inter,system-ui,sans-serif}
 header{background:var(--navy);color:#fff}
 .bar{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:12px}
 .bar img{width:40px;height:40px;display:block}
@@ -242,7 +244,7 @@ h2{font-size:20px;margin:40px 0 12px}
 .lead{color:var(--mute);margin:0 0 24px;max-width:720px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-.card b{display:block;font-size:24px;line-height:1.2}.card span{color:var(--mute);font-size:13.5px}
+.card b{display:block;font-size:22px;line-height:1.2;white-space:nowrap}.card span{color:var(--mute);font-size:13.5px}
 .note{color:var(--mute);font-size:14px;margin:10px 0 0}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 18px}
 .bars{display:grid;gap:14px;padding:12px 0}.bars .row{display:grid;grid-template-columns:minmax(120px,240px) 1fr 90px;gap:12px;align-items:center;font-size:15px}
@@ -339,7 +341,7 @@ def build_html(events, sdk_version=None, demo=False, hide_names=False, rates_not
     s = summarize(ev)
     now = datetime.datetime.now().strftime("%d %b %Y, %H:%M")
     out = [f"<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-           f"<title>SAVI local report</title><style>{_CSS}</style></head><body>",
+           f"<title>SAVI local report</title><style>{FONT_FACE_CSS}{_CSS}</style></head><body>",
            f"<header><div class=bar><img alt='' src='data:image/png;base64,{LOGO_PNG_BASE64}'><b>SAVI</b><span>Local report</span>"
            f"<span class=when>{_e(now)}</span></div></header>"]
     if demo:
