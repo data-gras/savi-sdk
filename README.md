@@ -14,16 +14,15 @@ PII flags, and carbon automatically, with zero changes to your prompts or model 
 > You do not need an account to start: [Local Mode](#start-here-try-it-from-zero) runs on your own computer
 > and sends nothing out. To use SAVI across your company, [book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
 
-> [!TIP]
 > **New here? Start with the two-page overview.**
 >
 > - **[How the SDK works](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/how-it-works.html)**: five steps from install to a report you can send.
 > - **[See a sample report](https://htmlpreview.github.io/?https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)**: what you get at the end.
 >
-> Both open in your browser. To keep a copy, download them from the [`docs`](docs/) folder.
+> Both open in your browser. To keep a copy, download them from the [`docs`](https://github.com/data-gras/savi-sdk/tree/main/docs) folder.
 
 Runnable examples, from "needs nothing" to "needs a provider key", live in
-[`examples/`](examples/).
+[`examples/`](https://github.com/data-gras/savi-sdk/tree/main/examples).
 
 ---
 
@@ -983,4 +982,4 @@ that doesn't touch the network regardless of `savi_key`/`local_mode`.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/data-gras/savi-sdk/blob/main/LICENSE).
