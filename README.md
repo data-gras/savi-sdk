@@ -10,13 +10,184 @@ Lightweight observability SDK for LLM costs, carbon, and compliance.
 Drop one wrapper around your LLM calls. SAVI captures spend, tokens, latency,
 PII flags, and carbon automatically, with zero changes to your prompts or model logic.
 
-> **Backend is closed-source SaaS.** This SDK is the open-source client.
-> Sign up at [app.datagras.com/signup](https://app.datagras.com/signup) to get
-> your `SAVI_KEY`, or skip signup entirely with [Local Mode](#local-mode),
-> which runs with zero account and zero network calls.
+> **The SAVI service is hosted and closed-source. This SDK is the open-source client.**
+> You do not need an account to start: [Local Mode](#start-here-try-it-from-zero) runs on your own computer
+> and sends nothing out. To use SAVI across your company, [book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
 
 Runnable examples, from "needs nothing" to "needs a provider key", live in
 [`examples/`](examples/).
+
+---
+
+## Start here: try it from zero
+
+This part assumes you know nothing. You do not need a SAVI account or a SAVI server. Local mode runs inside your own program on your own computer, and nothing leaves it. You need Python and one AI provider key (this guide uses OpenAI). A test costs a few cents.
+
+This guide needs savi-sdk 0.16 or newer. After step 4, check with `pip show savi-sdk`.
+
+No key yet? Jump to [Try it without a key](#try-it-without-a-key).
+
+### 1. Install Python
+
+You need Python 3.11 or newer. Check what you have:
+
+```
+python --version
+```
+
+On Mac or Linux you may need `python3 --version`. If it shows 3.11 or higher, go to step 2. If not, download Python from [python.org/downloads](https://www.python.org/downloads/). On Windows, tick **Add Python to PATH** on the first screen of the installer.
+
+### 2. Make a folder and open a terminal in it
+
+Make a new folder, for example `savi-try`.
+
+- **Windows:** open the folder, click the address bar, type `cmd`, press Enter.
+- **Mac:** open Terminal, type `cd ` (with a space after it), drag the folder into the window, press Enter.
+
+### 3. Make a clean Python space
+
+This keeps SAVI separate from everything else on your computer.
+
+```
+python -m venv venv
+```
+
+Turn it on:
+
+- **Windows:** `venv\Scripts\activate`
+- **Mac or Linux:** `source venv/bin/activate`
+
+You should now see `(venv)` at the start of the line. Do this again each time you open a new terminal.
+
+### 4. Install SAVI
+
+```
+pip install "savi-sdk[openai]"
+```
+
+### 5. Give it your OpenAI key
+
+Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Treat it like a password: never put it in a file you share. Set it for this terminal only:
+
+- **Windows, Command Prompt:** `set OPENAI_API_KEY=sk-your-key`
+- **Windows, PowerShell:** `$env:OPENAI_API_KEY="sk-your-key"`
+- **Mac or Linux:** `export OPENAI_API_KEY="sk-your-key"`
+
+### 6. Make your first calls
+
+Save this as `first_call.py` in your folder:
+
+```python
+import os
+from savi import SaviOpenAI, local_report
+
+local_report.start()   # turns on the readable output and the report
+
+client = SaviOpenAI(api_key=os.environ["OPENAI_API_KEY"], local_mode=True)
+
+# The first two questions are the same on purpose, so you can see SAVI notice a repeat.
+for question in ["What is a token?", "What is a token?", "Name three colours."]:
+    client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": question}],
+    )
+```
+
+Run it:
+
+```
+python first_call.py
+```
+
+### 7. What you will see
+
+Each call prints one line. When your script ends, a summary prints and SAVI writes `savi-report.html` in your folder. This is the output of the sample run (`python -m savi.local_report --demo`, made-up calls), so you know what to expect:
+
+```text
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   214  out    96    812 ms  cost ~$0.000090  workflow=support-inbox agent=triage
+  [ OK  ] openai     gpt-4o-2024-08-06            in  1840  out   402     2.3 s  cost ~$0.0086  workflow=support-inbox agent=drafter
+  [ OK  ] anthropic  claude-haiku-4-5-20251001    in   620  out   140    940 ms  cost ~$0.0013  workflow=kyc-review agent=extractor
+  [CACHE] openai     gpt-4o-mini-2024-07-18       in   214  out    96     14 ms  cost $0.00 (saved ~$0.000090)  answered from cache  workflow=support-inbox agent=triage
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   330  out    60    701 ms  cost ~$0.000085  personal data: EMAIL_ADDRESS x1, PERSON x1  workflow=support-inbox user=priya
+  [ OK  ] openai     gpt-4o-mini-2024-07-18       in   214  out    96    790 ms  cost ~$0.000090  workflow=support-inbox agent=triage
+  [ OK  ] mistral    mistral-small-latest         in   410  out    88     1.1 s  cost no price
+  [FAIL ] openai     gpt-4o                       in     0  out     0    30.2 s  cost -  failed timeout  workflow=support-inbox agent=drafter
+
+  Summary  (this computer only; nothing was sent anywhere)
+    8 calls, 1 failed   tokens in 3,842 / out 978   average response 1.1 s
+    cost about $0.01. Cost covers 6 of 7 calls. No price for: mistral-small-latest.
+    1 answered from the cache, saving about $0.000090
+    personal data found in 1 call: EMAIL_ADDRESS x1, PERSON x1
+    Costs marked ~ use the prices you entered. They are estimates, not a bill.
+```
+
+You may also see a line that starts with "PII masking is on by default but Presidio isn't installed". It is a notice, not an error. It means the personal-data add-on is not installed, so SAVI will not flag personal data yet. Your calls work either way. To add it, see [If something goes wrong](#if-something-goes-wrong).
+
+How to read a line: the status (`OK`, `CACHE` when the answer came from your own cache, `FAIL`), the provider and model, tokens in and out, how long the call took, and the cost. A `~` before a cost means it is an estimate from the prices you entered. Any labels (workflow, agent, user) come last.
+
+Now open `savi-report.html` in your browser (double-click it). It is one file with everything inside. The top of the sample report looks like this ([open the full sample](https://github.com/data-gras/savi-sdk/blob/main/docs/sample-report.html)):
+
+![The top of a SAVI local report: a headline, six totals, cost by model, and what SAVI noticed](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/sample-report.png)
+
+The full report also lists every call, the prices it used, and a box that explains what local mode cannot show.
+
+### 8. Add your own prices
+
+SAVI does not know what you pay, so it shows no cost until you tell it. Make a file called `my-prices.json`:
+
+```json
+{
+  "_note": "USD per 1 million tokens: [input, output]. Check your provider's pricing page.",
+  "gpt-4o-mini": [0.15, 0.60],
+  "gpt-4o": [2.50, 10.00]
+}
+```
+
+These numbers are examples. Look up your provider's current prices and use those. Then change one line in `first_call.py`:
+
+```python
+local_report.start(pricing="my-prices.json")
+```
+
+A price matches a model name that starts with it, so `gpt-4o-mini` also covers `gpt-4o-mini-2024-07-18`, the name OpenAI sends back. If two prices match, the longest name wins. A model with no price is left out of the total, and the report says which one. You can also set the file once for every script with the `SAVI_LOCAL_PRICING` environment variable. If the file has a mistake, SAVI tells you what and where.
+
+### 9. Share the report
+
+The report is one file, so you can email it or drop it in a chat. It holds counts, model names, tokens, response times, costs from your prices, and the types of personal data found. It never holds what was asked or answered. Workflow, agent and user names do appear. To swap them for neutral labels:
+
+```python
+local_report.start(pricing="my-prices.json", hide_names=True)
+```
+
+Open the file yourself before you send it.
+
+### Try it without a key
+
+This writes a sample report from made-up calls. The report says it is a sample, so nobody mistakes it for real use.
+
+```
+python -m savi.local_report --demo
+```
+
+### If something goes wrong
+
+Run the setup check. It shows your Python version, what is installed, which keys are set (never the keys themselves), settings that send your calls somewhere else, and whether your computer can reach the provider:
+
+```
+python -m savi.doctor
+```
+
+- **"Connection error" on every call.** Often a setting such as `OPENAI_BASE_URL` points your calls at another address. The setup check lists it. Remove it for this terminal to go back to OpenAI.
+- **No personal data flags.** Flagging is an add-on: `pip install "savi-sdk[pii]"` and then `python -m spacy download en_core_web_lg`. It is a large download, and on some computers (for example Windows on ARM) it may not install.
+- **No cost shown.** Add prices (step 8).
+
+### What local mode does not do
+
+It shows one run on one computer. It has no history across runs, no view of other teams, no spend limits, no rules, and no alerts. Those come when SAVI is connected to your company. [Book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and tell us which providers and tools your teams use.
+
+### Do I need a SAVI server?
+
+No. There is nothing to start and nothing to sign up for. You will not see `localhost` anywhere in this guide. The `api.datagras.com` addresses further down are for connected mode, which we set up with you.
 
 ---
 
@@ -67,7 +238,7 @@ See [Local Mode](#local-mode) below for the full picture (what's included,
 optional cost estimates). Every provider wrapper supports `local_mode=True`
 the same way.
 
-Once you have a SAVI account ([app.datagras.com/signup](https://app.datagras.com/signup)),
+Once your company has a SAVI account ([ask us](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme)),
 swap in your real `savi_key`/`tenant_id` instead and telemetry goes to SAVI
 itself rather than your terminal — same call, same code shape either way:
 
@@ -76,7 +247,7 @@ from savi import SaviOpenAI
 
 client = SaviOpenAI(
     api_key="sk-...",          # your OpenAI key
-    savi_key="sk_savi_...",    # from app.datagras.com/signup
+    savi_key="sk_savi_...",    # from your SAVI account
     tenant_id="ten_acme",
     team_id="engineering",
 )

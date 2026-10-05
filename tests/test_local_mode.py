@@ -98,6 +98,58 @@ def test_local_emitter_copies_local_pricing_not_aliased(caplog):
     assert logged_event["cost_usd"] == pytest.approx(12.50)
 
 
+def _logged(caplog):
+    return json.loads(caplog.records[0].getMessage().removeprefix("[savi:local] "))
+
+
+def test_local_pricing_matches_a_dated_model_name_by_prefix(caplog):
+    """OpenAI returns 'gpt-4o-mini-2024-07-18' for a request made as 'gpt-4o-mini'; rates keyed on the short name must apply."""
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o-mini": (0.15, 0.60)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o-mini-2024-07-18", "tokens_in": 1_000_000, "tokens_out": 1_000_000})
+    e = _logged(caplog)
+    assert e["cost_usd"] == pytest.approx(0.75)
+    assert e["cost_estimated"] is True
+
+
+def test_local_pricing_longest_prefix_wins(caplog):
+    """'gpt-4o' must not price a 'gpt-4o-mini-...' call when a more specific 'gpt-4o-mini' rate is given."""
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o": (2.50, 10.00), "gpt-4o-mini": (0.15, 0.60)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o-mini-2024-07-18", "tokens_in": 1_000_000, "tokens_out": 0})
+    assert _logged(caplog)["cost_usd"] == pytest.approx(0.15)
+
+
+def test_local_pricing_exact_name_beats_a_shorter_prefix(caplog):
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o": (2.50, 10.00), "gpt-4o-2024-08-06": (2.50, 10.00), "gpt-4": (30.0, 60.0)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o", "tokens_in": 1_000_000, "tokens_out": 0})
+    assert _logged(caplog)["cost_usd"] == pytest.approx(2.50)
+
+
+def test_local_pricing_does_not_match_a_longer_key_than_the_model(caplog):
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o-mini": (0.15, 0.60)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o", "tokens_in": 100, "tokens_out": 50})
+    assert "cost_usd" not in _logged(caplog)
+
+
+def test_cache_hit_costs_nothing_and_shows_what_it_saved(caplog):
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o": (2.50, 10.00)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o", "tokens_in": 1_000_000, "tokens_out": 1_000_000, "is_cache_hit": True})
+    e = _logged(caplog)
+    assert e["cost_usd"] == 0.0
+    assert e["cost_saved_usd"] == pytest.approx(12.50)
+
+
+def test_failed_call_gets_no_cost(caplog):
+    emitter = LocalEventEmitter(local_pricing={"gpt-4o": (2.50, 10.00)})
+    with caplog.at_level(logging.INFO, logger="savi.local"):
+        emitter.emit({"model": "gpt-4o", "tokens_in": 0, "tokens_out": 0, "is_error": True})
+    assert "cost_usd" not in _logged(caplog)
+
+
 # ---------------------------------------------------------------------------
 # End-to-end: SaviOpenAI(local_mode=True) — the actual feature a developer uses
 # ---------------------------------------------------------------------------
