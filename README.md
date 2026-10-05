@@ -27,7 +27,7 @@ This guide needs savi-sdk 0.16 or newer. After step 4, check with `pip show savi
 
 No key yet? Jump to [Try it without a key](#try-it-without-a-key).
 
-![How savi-sdk works: install, wrap your client, call as usual, SAVI notes each call, read the results. Local mode keeps everything on your computer; connected mode sends the same notes to your SAVI account.](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/how-it-works.svg)
+![How savi-sdk works: install, wrap your client, call as usual, SAVI notes each call, read the results. Local mode keeps everything on your computer; connected mode sends the same notes to your SAVI account.](https://raw.githubusercontent.com/data-gras/savi-sdk/main/docs/how-it-works.png)
 
 ### 1. Install Python
 
