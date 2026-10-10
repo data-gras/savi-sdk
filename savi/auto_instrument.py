@@ -36,6 +36,10 @@ from datetime import datetime, timezone
 
 from savi.context import attribution_fields
 from savi.local import resolve_emitter
+from savi.content import (
+    ContentCapture, add_content, resolve_capture, openai_response_text, openai_tool_calls,
+    openai_tool_results, anthropic_response_text, anthropic_tool_calls, anthropic_tool_results,
+)
 from savi.pii import fingerprint
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,7 @@ _state: dict = {
     "team_id": None,
     "masker": None,
     "workload_type": None,
+    "content": None,
 }
 # (cls, method_name) -> original unbound function, for disable_auto_instrumentation().
 _originals: dict = {}
@@ -71,6 +76,7 @@ def enable_auto_instrumentation(
     flush_interval_secs: float = 5.0,
     local_mode: bool = False,
     local_pricing: "dict[str, tuple[float, float]] | None" = None,
+    capture_content: "bool | ContentCapture" = False,
     _collector=None,
 ) -> None:
     """Patch openai/anthropic chat/message completion calls process-wide.
@@ -114,7 +120,7 @@ def enable_auto_instrumentation(
 
         _state.update(
             enabled=True, collector=collector, tenant_id=tenant_id, team_id=team_id,
-            masker=masker, workload_type=workload_type,
+            masker=masker, workload_type=workload_type, content=resolve_capture(capture_content),
         )
 
         _patch_openai()
@@ -131,7 +137,7 @@ def disable_auto_instrumentation() -> None:
         _originals.clear()
         _state.update(
             enabled=False, collector=None, tenant_id=None, team_id=None,
-            masker=None, workload_type=None,
+            masker=None, workload_type=None, content=None,
         )
 
 
@@ -171,13 +177,29 @@ def _mask_messages(messages):
     return masker.mask_messages(messages)
 
 
-def _emit(provider, response, latency_ms, fp, pii_flagged, pii_types) -> None:
+def _emit(provider, response, latency_ms, fp, pii_flagged, pii_types, messages=None, system=None) -> None:
     try:
         payload = _build_payload(provider, response, latency_ms, fp, pii_flagged, pii_types)
+        payload = _with_content(payload, provider, response, messages, system)
         _state["collector"].emit(payload)
     except Exception:
         # Telemetry must never break the customer's actual LLM call.
         logger.debug("savi.auto_instrument: failed to emit event", exc_info=True)
+
+
+def _with_content(payload, provider, response, messages, system):
+    capture = _state.get("content")
+    if capture is None:
+        return payload
+    if provider == "openai":
+        return add_content(payload, capture, _state["masker"], messages=messages,
+                           response_text=openai_response_text(response),
+                           tool_calls=openai_tool_calls(response),
+                           tool_results=openai_tool_results(messages))
+    return add_content(payload, capture, _state["masker"], messages=messages, system=system,
+                       response_text=anthropic_response_text(response),
+                       tool_calls=anthropic_tool_calls(response),
+                       tool_results=anthropic_tool_results(messages))
 
 
 def _build_payload(provider, response, latency_ms, fp, pii_flagged, pii_types) -> dict:
@@ -239,7 +261,7 @@ def _make_sync_wrapper(provider: str):
             response = original(self, *args, **kwargs)
             latency_ms = int((time.monotonic() - t0) * 1000)
 
-            _emit(provider, response, latency_ms, fp, pii_flagged, pii_types)
+            _emit(provider, response, latency_ms, fp, pii_flagged, pii_types, messages, kwargs.get("system"))
             return response
         return wrapper
     return make
@@ -263,7 +285,7 @@ def _make_async_wrapper(provider: str):
 
             # emit() is a plain buffer append, not a coroutine - fine to
             # call directly here without awaiting it.
-            _emit(provider, response, latency_ms, fp, pii_flagged, pii_types)
+            _emit(provider, response, latency_ms, fp, pii_flagged, pii_types, messages, kwargs.get("system"))
             return response
         return wrapper
     return make

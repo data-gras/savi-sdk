@@ -534,6 +534,39 @@ enable_auto_instrumentation(local_mode=True)
 
 ---
 
+## Sending prompt and response text (opt-in, off by default)
+
+By default the SDK sends only metadata: tokens, cost, latency, a fingerprint, and PII counts. It never sends what was said. If your workspace has turned on content capture in SAVI (with its consent and settings), you can also have the SDK send the latest user message, the response, the tool calls and results, the system prompt, the earlier messages and any retrieved documents, so they can be reviewed and replayed under SAVI's access controls.
+
+```python
+import savi
+from savi import SaviOpenAI
+
+client = SaviOpenAI(api_key="...", savi_key="sk_...", tenant_id="ten_acme",
+                    capture_content=True)
+
+with savi.conversation("support-4711"):          # groups the calls and numbers them 0, 1, 2
+    client.chat.completions.create(model="gpt-4o", messages=[...])
+    client.chat.completions.create(model="gpt-4o", messages=[...])
+```
+
+- **Off unless you ask.** `capture_content=True` sends every part. To send only some, pass `ContentCapture(prompt=True, response=True, tools=False, system=False, history=False, retrieval=False)`.
+- **Six parts, each its own switch on the server.** `prompt_text` is the latest user message, `system_prompt` the system prompt, `history_text` the earlier messages, `response_text` the reply, `tool_arguments` and `tool_results` the tool calls, and `retrieved_context` the documents you declare (below). A part is stored only when the workspace has switched that part on for the agent and environment. SDK versions before this split sent the whole conversation in `prompt_text`.
+- **Retrieved documents are declared, not detected.** SAVI cannot see inside your search or vector store, so wrap the call:
+
+  ```python
+  with savi.retrieval([{"source": c.source, "text": c.text} for c in chunks]):
+      client.chat.completions.create(model="gpt-4o", messages=[...])
+  ```
+
+  Each item can be a string or a dict. Outside the block nothing is sent. Documents can hold whole customer files, so the workspace switch is off until someone turns it on.
+- **SAVI still decides what is kept.** The server stores the text only if your workspace has opted in for that agent and environment, and it masks the text again on arrival with its own redactor. If the workspace has not opted in, the text is discarded on arrival and never stored.
+- **Masked here first when it can be.** With `mask_pii` on and the `pii` extra installed, the text is masked before it leaves your process.
+- **Never in logs.** Local mode never carries content.
+- **Bounded.** Each field is cut to the server's 10,000-character limit (the newest part is kept), so long text can never make SAVI reject the event.
+- **Not for streamed calls.** Streamed responses are not recorded at all, content or metadata, in this version.
+- **Works with** OpenAI, Azure OpenAI, Anthropic, Mistral, Cohere, Bedrock (`converse`), Vertex (text prompts only) and `enable_auto_instrumentation(capture_content=True)`.
+
 ## Local Mode
 
 No SAVI account, no `SAVI_KEY`, no network call. Everything the wrapper

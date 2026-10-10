@@ -4,6 +4,7 @@
 from savi.context import SpanContext
 from savi.pii     import PiiMasker, fingerprint
 from savi.judge   import OutcomeExplainer
+from savi.content import ContentCapture, conversation, retrieval
 from savi.auto_instrument import enable_auto_instrumentation, disable_auto_instrumentation
 from savi.mcp_instrument import enable_mcp_instrumentation, disable_mcp_instrumentation
 
@@ -27,7 +28,7 @@ _PROVIDER_EXPORTS = {
 
 __all__ = [
     *_PROVIDER_EXPORTS,
-    "SpanContext", "PiiMasker", "fingerprint", "OutcomeExplainer",
+    "SpanContext", "PiiMasker", "fingerprint", "ContentCapture", "conversation", "retrieval", "OutcomeExplainer",
     "enable_auto_instrumentation", "disable_auto_instrumentation",
     "enable_mcp_instrumentation", "disable_mcp_instrumentation",
 ]

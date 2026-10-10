@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from openai.types.chat import ChatCompletion
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, OpenAIContentMixin
 
 _log = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ class SaviAzureOpenAI:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
     ):
         from openai import AzureOpenAI as _AzureOpenAI
@@ -96,6 +98,7 @@ class SaviAzureOpenAI:
         # (AzureOpenAI shares the same completions class OpenAI uses).
         self._inner.chat.completions._savi_instrumented = True
         self.chat = _ChatProxy(self._inner, self._collector.emit, tenant_id, team_id, masker, workload_type, cache)
+        self.chat.completions._content = resolve_capture(capture_content)
 
 
 class _ChatProxy:
@@ -103,7 +106,7 @@ class _ChatProxy:
         self.completions = _CompletionsProxy(inner, emit_fn, tenant_id, team_id, masker, workload_type, cache)
 
 
-class _CompletionsProxy:
+class _CompletionsProxy(OpenAIContentMixin):
     def __init__(self, inner, emit_fn, tenant_id, team_id, masker, workload_type=None, cache=None):
         self._inner        = inner
         self._emit          = emit_fn
@@ -122,7 +125,7 @@ class _CompletionsProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -145,7 +148,7 @@ class _CompletionsProxy:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                 self._tenant, self._team, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
@@ -237,6 +240,7 @@ class SaviAsyncAzureOpenAI:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
     ):
         from openai import AsyncAzureOpenAI as _AsyncAzureOpenAI
@@ -257,6 +261,7 @@ class SaviAsyncAzureOpenAI:
         # Prevent auto_instrument from wrapping this client a second time.
         self._inner.chat.completions._savi_instrumented = True
         self.chat = _AsyncChatProxy(self._inner, self._collector.emit, tenant_id, team_id, masker, workload_type, cache)
+        self.chat.completions._content = resolve_capture(capture_content)
 
 
 class _AsyncChatProxy:
@@ -264,7 +269,7 @@ class _AsyncChatProxy:
         self.completions = _AsyncCompletionsProxy(inner, emit_fn, tenant_id, team_id, masker, workload_type, cache)
 
 
-class _AsyncCompletionsProxy:
+class _AsyncCompletionsProxy(OpenAIContentMixin):
     def __init__(self, inner, emit_fn, tenant_id, team_id, masker, workload_type=None, cache=None):
         self._inner        = inner
         self._emit          = emit_fn
@@ -283,7 +288,7 @@ class _AsyncCompletionsProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -308,7 +313,7 @@ class _AsyncCompletionsProxy:
         # emit() is synchronous (a plain buffer append), so it's called
         # directly here rather than awaited.
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                 self._tenant, self._team, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))

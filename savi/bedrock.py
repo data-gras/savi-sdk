@@ -7,6 +7,7 @@ from savi.context import attribution_fields
 from savi.local import resolve_emitter
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, BedrockContentMixin
 
 _log = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def _mask_converse_messages(masker, messages: list) -> tuple[list, bool, "dict |
     return masked_messages, pii_flagged, (all_counts if all_counts else None)
 
 
-class SaviBedrockRuntime:
+class SaviBedrockRuntime(BedrockContentMixin):
     """Drop-in observability wrapper for boto3 bedrock-runtime.converse().
 
     Uses the Converse API (not InvokeModel), unified token schema across all
@@ -105,6 +106,7 @@ class SaviBedrockRuntime:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
         _client=None,
         **boto3_kwargs,
@@ -125,6 +127,7 @@ class SaviBedrockRuntime:
         )
         self._masker = _build_masker(mask_pii, pii_entities, pii_exclude_entities)
         self._cache  = ResponseCache(cache_ttl_seconds, cache_max_size) if enable_cache else None
+        self._content = resolve_capture(capture_content)
 
     def converse(self, model_id: str, messages: list, **kwargs) -> dict:
         """Wrap bedrock-runtime converse(). Provider always receives original messages."""
@@ -135,7 +138,7 @@ class SaviBedrockRuntime:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._collector.emit(self._build_payload(
+                    self._emit_with_content(messages, kwargs.get("system"), cached, self._build_payload(
                         model_id, cached, 0, fp, pii_flagged, pii_types, is_cache_hit=True,
                     ))
                 except Exception:
@@ -150,7 +153,7 @@ class SaviBedrockRuntime:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._collector.emit(self._build_payload(
+            self._emit_with_content(messages, kwargs.get("system"), response, self._build_payload(
                         model_id, response, latency_ms, fp, pii_flagged, pii_types))
         except Exception:
             _log.debug("savi.bedrock: emit failed", exc_info=True)
@@ -185,7 +188,7 @@ class SaviBedrockRuntime:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._collector.emit(self._build_payload(
+                    self._emit_with_content(messages, kwargs.get("system"), cached, self._build_payload(
                         model_id, cached, 0, fp, pii_flagged, pii_types, is_cache_hit=True,
                     ))
                 except Exception:
@@ -203,7 +206,7 @@ class SaviBedrockRuntime:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._collector.emit(self._build_payload(
+            self._emit_with_content(messages, kwargs.get("system"), response, self._build_payload(
                         model_id, response, latency_ms, fp, pii_flagged, pii_types))
         except Exception:
             _log.debug("savi.bedrock: emit failed", exc_info=True)

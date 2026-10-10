@@ -7,6 +7,7 @@ from savi.context import attribution_fields
 from savi.local import resolve_emitter
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, CohereContentMixin
 
 _log = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def _build_masker(mask_pii, pii_entities, pii_exclude_entities=None):
         return None
 
 
-class SaviCohere:
+class SaviCohere(CohereContentMixin):
     """Drop-in observability wrapper for cohere.ClientV2.chat().
 
     Uses the v2 messages API (OpenAI-compatible format). Tokens are read from
@@ -66,6 +67,7 @@ class SaviCohere:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
         _client=None,
     ):
@@ -82,6 +84,7 @@ class SaviCohere:
             batch_size, flush_interval_secs, local_pricing,
         )
         self._masker = _build_masker(mask_pii, pii_entities, pii_exclude_entities)
+        self._content = resolve_capture(capture_content)
         self._cache  = ResponseCache(cache_ttl_seconds, cache_max_size) if enable_cache else None
 
     def chat(self, model: str, messages: list, **kwargs) -> object:
@@ -94,7 +97,7 @@ class SaviCohere:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._collector.emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, model, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -117,7 +120,7 @@ class SaviCohere:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._collector.emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                         self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
@@ -172,7 +175,7 @@ def _build_payload(tenant_id, team_id, model, response, latency_ms, fp, pii_flag
     return payload
 
 
-class SaviAsyncCohere:
+class SaviAsyncCohere(CohereContentMixin):
     """Async-native equivalent of SaviCohere, wraps cohere.AsyncClientV2 so it
     can be awaited from async application code. Same constructor shape and
     emitted-event contract as SaviCohere.
@@ -200,6 +203,7 @@ class SaviAsyncCohere:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
         _client=None,
     ):
@@ -216,6 +220,7 @@ class SaviAsyncCohere:
             batch_size, flush_interval_secs, local_pricing,
         )
         self._masker = _build_masker(mask_pii, pii_entities, pii_exclude_entities)
+        self._content = resolve_capture(capture_content)
         self._cache  = ResponseCache(cache_ttl_seconds, cache_max_size) if enable_cache else None
 
     async def chat(self, model: str, messages: list, **kwargs) -> object:
@@ -228,7 +233,7 @@ class SaviAsyncCohere:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._collector.emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, model, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -253,7 +258,7 @@ class SaviAsyncCohere:
         # emit() is synchronous (a plain buffer append), so it's called
         # directly here rather than awaited.
         try:
-            self._collector.emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                         self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))

@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, VertexContentMixin
 
 _log = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class SaviVertexAI:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
     ):
         import vertexai
@@ -77,6 +79,7 @@ class SaviVertexAI:
         )
         self._masker = _build_masker(mask_pii, pii_entities, pii_exclude_entities)
         self._cache  = ResponseCache(cache_ttl_seconds, cache_max_size) if enable_cache else None
+        self._content = resolve_capture(capture_content)
 
     def GenerativeModel(self, model_name: str) -> "_WrappedModel":
         import vertexai.generative_models as _vg
@@ -84,10 +87,11 @@ class SaviVertexAI:
         wrapped = _WrappedModel(inner, model_name, self._collector.emit,
                                 self._tenant_id, self._team_id, self._masker,
                                 self._workload_type, self._cache)
+        wrapped._content = self._content
         return wrapped
 
 
-class _WrappedModel:
+class _WrappedModel(VertexContentMixin):
     def __init__(self, inner, model_name: str, emit_fn, tenant_id: str, team_id: str, masker,
                  workload_type=None, cache=None):
         self._inner        = inner
@@ -118,7 +122,7 @@ class _WrappedModel:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(self._build_payload(cached, 0, fp, pii_flagged, pii_types, is_cache_hit=True))
+                    self._emit_with_content(contents, cached, self._build_payload(cached, 0, fp, pii_flagged, pii_types, is_cache_hit=True))
                 except Exception:
                     _log.debug("savi.google_vertex: emit failed", exc_info=True)
                 return cached
@@ -138,7 +142,7 @@ class _WrappedModel:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._emit(self._build_payload(response, latency_ms, fp, pii_flagged, pii_types))
+            self._emit_with_content(contents, response, self._build_payload(response, latency_ms, fp, pii_flagged, pii_types))
         except Exception:
             _log.debug("savi.google_vertex: emit failed", exc_info=True)
         return response

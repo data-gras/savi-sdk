@@ -20,6 +20,7 @@ import json
 import logging
 import os
 
+from savi.content import strip_content
 
 _log = logging.getLogger("savi.local")
 if not _log.handlers:
@@ -129,7 +130,7 @@ class LocalEventEmitter:
 
     def emit(self, event: dict) -> None:
         # Content fields never reach a log line, even locally.
-        event = dict(event)
+        event = strip_content(event)
         if not event.get("is_error"):
             pricing = active_pricing(self._local_pricing)
             key = _find_key(pricing, event.get("model"))

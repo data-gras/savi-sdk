@@ -9,6 +9,7 @@ from savi.context import attribution_fields
 from savi.local import resolve_emitter
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, AnthropicContentMixin
 
 try:
     from anthropic import AsyncAnthropic as _AsyncAnthropic
@@ -71,6 +72,7 @@ class SaviAnthropic:
                  cache_max_size: int = 1000,
                  local_mode: bool = False,
                  local_pricing: "dict[str, tuple[float, float]] | None" = None,
+                 capture_content: "bool | ContentCapture" = False,
                  _collector=None):
         self._inner     = _Anthropic(**_client_kwargs(api_key, timeout, max_retries))
         self._tenant_id = tenant_id
@@ -84,9 +86,10 @@ class SaviAnthropic:
         # Prevent auto_instrument from wrapping this client a second time.
         self._inner.messages._savi_instrumented = True
         self.messages = _MessagesProxy(self._inner, self._collector.emit, tenant_id, team_id, masker, workload_type, cache)
+        self.messages._content = resolve_capture(capture_content)
 
 
-class _MessagesProxy:
+class _MessagesProxy(AnthropicContentMixin):
     def __init__(self, inner, emit_fn, tenant_id, team_id, masker, workload_type=None, cache=None):
         self._inner        = inner
         self._emit         = emit_fn
@@ -108,7 +111,7 @@ class _MessagesProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, kwargs.get("system"), cached, _build_payload(
                         self._tenant, self._team, cached, 0,
                         fp, pii_flagged, pii_types, self._workload_type,
                         is_cache_hit=True,
@@ -131,7 +134,7 @@ class _MessagesProxy:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, kwargs.get("system"), response, _build_payload(
                 self._tenant, self._team, response, latency_ms,
                 fp, pii_flagged, pii_types, self._workload_type,
             ))
@@ -258,6 +261,7 @@ class SaviAsyncAnthropic:
                  cache_max_size: int = 1000,
                  local_mode: bool = False,
                  local_pricing: "dict[str, tuple[float, float]] | None" = None,
+                 capture_content: "bool | ContentCapture" = False,
                  _collector=None):
         if _AsyncAnthropic is None:
             raise ImportError("anthropic>=0.40 with AsyncAnthropic support is required for SaviAsyncAnthropic")
@@ -273,9 +277,10 @@ class SaviAsyncAnthropic:
         # Prevent auto_instrument from wrapping this client a second time.
         self._inner.messages._savi_instrumented = True
         self.messages = _AsyncMessagesProxy(self._inner, self._collector.emit, tenant_id, team_id, masker, workload_type, cache)
+        self.messages._content = resolve_capture(capture_content)
 
 
-class _AsyncMessagesProxy:
+class _AsyncMessagesProxy(AnthropicContentMixin):
     def __init__(self, inner, emit_fn, tenant_id, team_id, masker, workload_type=None, cache=None):
         self._inner        = inner
         self._emit         = emit_fn
@@ -297,7 +302,7 @@ class _AsyncMessagesProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, kwargs.get("system"), cached, _build_payload(
                         self._tenant, self._team, cached, 0,
                         fp, pii_flagged, pii_types, self._workload_type,
                         is_cache_hit=True,
@@ -322,7 +327,7 @@ class _AsyncMessagesProxy:
         # emit() is synchronous (a plain buffer append), so it's called
         # directly here rather than awaited.
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, kwargs.get("system"), response, _build_payload(
                 self._tenant, self._team, response, latency_ms,
                 fp, pii_flagged, pii_types, self._workload_type,
             ))

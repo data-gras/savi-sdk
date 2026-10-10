@@ -7,6 +7,7 @@ from savi.context import attribution_fields
 from savi.local import resolve_emitter
 from savi.pii import fingerprint
 from savi.cache import ResponseCache
+from savi.content import ContentCapture, resolve_capture, OpenAIContentMixin
 
 _log = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class SaviMistral:
         cache_max_size: int = 1000,
         local_mode: bool = False,
         local_pricing: "dict[str, tuple[float, float]] | None" = None,
+        capture_content: "bool | ContentCapture" = False,
         _collector=None,
         _client=None,
     ):
@@ -80,9 +82,10 @@ class SaviMistral:
         masker = _build_masker(mask_pii, pii_entities, pii_exclude_entities)
         cache  = ResponseCache(cache_ttl_seconds, cache_max_size) if enable_cache else None
         self.chat = _ChatProxy(inner, self._collector.emit, tenant_id, team_id, masker, workload_type, cache)
+        self.chat._content = resolve_capture(capture_content)
 
 
-class _ChatProxy:
+class _ChatProxy(OpenAIContentMixin):
     def __init__(self, inner, emit_fn, tenant_id: str, team_id: str, masker, workload_type=None, cache=None):
         self._inner        = inner
         self._emit          = emit_fn
@@ -102,7 +105,7 @@ class _ChatProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, model, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -125,7 +128,7 @@ class _ChatProxy:
             self._cache.set(fp, pii_flagged, response)
 
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                         self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
@@ -145,7 +148,7 @@ class _ChatProxy:
             cached = self._cache.get(fp, pii_flagged)
             if cached is not None:
                 try:
-                    self._emit(_build_payload(
+                    self._emit_with_content(messages, cached, _build_payload(
                         self._tenant, self._team, model, cached, 0, fp, pii_flagged, pii_types,
                         self._workload_type, is_cache_hit=True,
                     ))
@@ -170,7 +173,7 @@ class _ChatProxy:
         # emit() is synchronous (a plain buffer append), so it's called
         # directly here rather than awaited.
         try:
-            self._emit(_build_payload(
+            self._emit_with_content(messages, response, _build_payload(
                         self._tenant, self._team, model, response, latency_ms, fp, pii_flagged, pii_types,
                 self._workload_type,
             ))
