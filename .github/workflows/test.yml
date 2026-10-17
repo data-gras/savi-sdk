@@ -41,6 +41,10 @@ jobs:
           pytest --cov=savi --cov-report=xml --cov-report=term -q
 
       - name: Upload coverage to Codecov
+        # The badge upload downloads its uploader from Codecov and can fail on a
+        # network handshake before fail_ci_if_error is read. A failed badge must not
+        # fail the build: the tests above are the gate.
+        continue-on-error: true
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4
         with:
