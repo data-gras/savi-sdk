@@ -12,7 +12,7 @@ PII flags, and carbon automatically, with zero changes to your prompts or model 
 
 > **The SAVI service is hosted and closed-source. This SDK is the open-source client.**
 > You do not need an account to start: [Local Mode](#start-here-try-it-from-zero) runs on your own computer
-> and sends nothing out. To use SAVI across your company, [book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
+> and sends nothing out. To use SAVI across your company, [book a demo](https://www.datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and we will set it up with you.
 
 > **New here? Start with the two-page overview.**
 >
@@ -189,7 +189,7 @@ python -m savi.doctor
 
 ### What local mode does not do
 
-It shows one run on one computer. It has no history across runs, no view of other teams, no spend limits, no rules, and no alerts. Those come when SAVI is connected to your company. [Book a demo](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and tell us which providers and tools your teams use.
+It shows one run on one computer. It has no history across runs, no view of other teams, no spend limits, no rules, and no alerts. Those come when SAVI is connected to your company. [Book a demo](https://www.datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme) and tell us which providers and tools your teams use.
 
 ### Do I need a SAVI server?
 
@@ -244,7 +244,7 @@ See [Local Mode](#local-mode) below for the full picture (what's included,
 optional cost estimates). Every provider wrapper supports `local_mode=True`
 the same way.
 
-Once your company has a SAVI account ([ask us](https://datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme)),
+Once your company has a SAVI account ([ask us](https://www.datagras.com/savi/contact?utm_source=github&utm_medium=readme&utm_campaign=sdk-readme)),
 swap in your real `savi_key`/`tenant_id` instead and telemetry goes to SAVI
 itself rather than your terminal — same call, same code shape either way:
 

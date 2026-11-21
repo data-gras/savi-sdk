@@ -6,13 +6,15 @@ long_description = (Path(__file__).parent / "README.md").read_text(encoding="utf
 setup(
     name="savi-sdk",
     version="0.16.0",
-    description="Lightweight observability SDK for LLM costs, carbon, and compliance",
+    description="Lightweight observability SDK for LLM cost, latency, and PII",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="SAVI",
     author_email="contact@datagras.com",
-    url="https://github.com/data-gras/savi-sdk",
+    url="https://www.datagras.com/savi/developers",
     project_urls={
+        "Homepage":      "https://www.datagras.com/savi/developers",
+        "Source":        "https://github.com/data-gras/savi-sdk",
         "Documentation": "https://github.com/data-gras/savi-sdk#readme",
         "Bug Tracker":   "https://github.com/data-gras/savi-sdk/issues",
         "Changelog":     "https://github.com/data-gras/savi-sdk/releases",
@@ -33,7 +35,7 @@ setup(
     ],
     keywords=[
         "llm", "ai", "finops", "observability", "cost", "openai", "anthropic",
-        "bedrock", "cohere", "mistral", "vertex", "azure", "carbon", "compliance",
+        "bedrock", "cohere", "mistral", "vertex", "azure", "compliance",
         "pii", "aud", "savi",
     ],
     packages=find_packages(exclude=["tests*"]),
